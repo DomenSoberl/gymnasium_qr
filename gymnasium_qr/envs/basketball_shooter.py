@@ -7,17 +7,17 @@ import Box2D
 import numpy as np
 
 
-class BasketEnv(gym.Env):
+class BasketballShooterEnv(gym.Env):
     metadata = {
-        'render_modes': ['human', 'png'],
-        'render_fps': 60,
-        'render_ppm': 200
+        "render_modes": ["human", "png"],
+        "render_fps": 60,
     }
 
     def get_default_options():
         return {
             'simulation': {
                 'world_size': (5, 3),
+                'ppm': 200,
                 'episode_length': 300
             },
             'arm': {
@@ -58,7 +58,7 @@ class BasketEnv(gym.Env):
     ):
         self._options = (
             options if options is not None
-            else BasketEnv.get_default_options()
+            else BasketballShooterEnv.get_default_options()
         )
 
         # Rendering objects
@@ -281,6 +281,7 @@ class BasketEnv(gym.Env):
             velocityIterations=4, positionIterations=4
         )
 
+        self._episode_step += 1
         self._trajectory.append((self._ball.position.x, self._ball.position.y))
 
         if self.render_mode == "human" or self.render_mode == "png":
@@ -291,18 +292,16 @@ class BasketEnv(gym.Env):
 
         reward = 1 if info['distance'] < 0.01 else 0
 
-        self._episode_step += 1
-
-        terminated = bool(
-            self._episode_step >= self._options['simulation']['episode_length']
-        )
-
         [ball_x, ball_y] = info['ball']
         (width, height) = self._options['simulation']['world_size']
 
-        truncated = bool(
+        terminated = bool(
             info['distance'] < 0.01 or
             ball_x < 0 or ball_x > width or ball_y < 0
+        )
+
+        truncated = bool(
+            self._episode_step >= self._options['simulation']['episode_length']
         )
 
         return observation, reward, terminated, truncated, info
@@ -312,7 +311,7 @@ class BasketEnv(gym.Env):
 
     def _render_frame(self):
         (width, height) = self._options['simulation']['world_size']
-        ppm = self.metadata['render_ppm']
+        ppm = self._options['simulation']['ppm']
 
         if not self._pygame_initialized:
             pygame.init()
@@ -353,7 +352,7 @@ class BasketEnv(gym.Env):
             self._frame_number += 1
 
     def _paint_circle(self, canvas, position, radius, color):
-        ppm = self.metadata['render_ppm']
+        ppm = self._options['simulation']['ppm']
 
         (x, y) = position
         vx = round(x * ppm)
@@ -361,7 +360,7 @@ class BasketEnv(gym.Env):
         pygame.draw.circle(canvas, color, (vx, vy), 10)
 
     def _paint_segment(self, canvas, p0, p1, color):
-        ppm = self.metadata['render_ppm']
+        ppm = self._options['simulation']['ppm']
 
         (x0, y0) = p0
         vx0 = round(x0 * ppm)
@@ -374,7 +373,7 @@ class BasketEnv(gym.Env):
         pygame.draw.line(canvas, color, (vx0, vy0), (vx1, vy1), 1)
 
     def _paint_body(self, canvas, body, color):
-        ppm = self.metadata['render_ppm']
+        ppm = self._options['simulation']['ppm']
         height = canvas.get_height()
 
         for fixture in body.fixtures:

@@ -1,1 +1,1 @@
-from gymnasium_qr.envs.basket import BasketEnv
+from gymnasium_qr.envs.basketball_shooter import BasketballShooterEnv
