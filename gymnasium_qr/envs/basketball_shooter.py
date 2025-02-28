@@ -43,7 +43,8 @@ class BasketballShooterEnv(gym.Env):
             },
             'ball': {
                 'radius': 0.1,
-                'position': (1.5, 1),
+                'position': (1.5, 2),
+                'position_relative': False,
                 'random_position_offset': {
                     'x': [-0.1, 0.1],
                     'y': [-0.1, 0.1]
@@ -187,6 +188,11 @@ class BasketballShooterEnv(gym.Env):
 
         # Ball
         (position_x, position_y) = self._options['ball']['position']
+        if self._options['ball']['position_relative']:
+            (origin_x, origin_y) = lower_arm.transform * (self._options['arm']['lower']['length'], 0)
+            position_x += origin_x
+            position_y += origin_y
+
         [offset_x_min, offset_x_max] = self._options['ball']['random_position_offset']['x']
         [offset_y_min, offset_y_max] = self._options['ball']['random_position_offset']['y']
 
