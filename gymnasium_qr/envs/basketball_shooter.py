@@ -18,7 +18,8 @@ class BasketballShooterEnv(gym.Env):
             'simulation': {
                 'world_size': (5, 3),
                 'ppm': 200,
-                'episode_length': 300
+                'episode_length': 300,
+                'skip_initial_steps': 0
             },
             'arm': {
                 'position': (1, 1),
@@ -61,6 +62,7 @@ class BasketballShooterEnv(gym.Env):
             options if options is not None
             else BasketballShooterEnv.get_default_options()
         )
+        self._episode_options = None
 
         # Rendering objects
         self.window = None
@@ -90,17 +92,23 @@ class BasketballShooterEnv(gym.Env):
         self._world = None
 
     def _create_world(self):
+        # Which options to use?
+        if self._episode_options is not None:
+            options = self._episode_options
+        else:
+            options = self._options
+
         # Create the Box2D world
         world = Box2D.b2.world(gravity=(0, -9.81))
 
         # Arm
-        arm_position = self._options['arm']['position']
+        arm_position = options['arm']['position']
         arm_width = 0.01  # We make it a constant.
 
         # Upper arm
-        arm_length = self._options['arm']['upper']['length']
-        arm_angle = self._options['arm']['upper']['angle']
-        [offset_min, offset_max] = self._options['arm']['upper']['random_angle_offset']
+        arm_length = options['arm']['upper']['length']
+        arm_angle = options['arm']['upper']['angle']
+        [offset_min, offset_max] = options['arm']['upper']['random_angle_offset']
 
         arm_mount = world.CreateStaticBody(position=arm_position)
         upper_arm = world.CreateDynamicBody(
@@ -118,9 +126,9 @@ class BasketballShooterEnv(gym.Env):
         )
 
         # Lower arm
-        arm_length = self._options['arm']['lower']['length']
-        arm_angle = self._options['arm']['lower']['angle']
-        [offset_min, offset_max] = self._options['arm']['lower']['random_angle_offset']
+        arm_length = options['arm']['lower']['length']
+        arm_angle = options['arm']['lower']['angle']
+        [offset_min, offset_max] = options['arm']['lower']['random_angle_offset']
 
         lower_arm = world.CreateDynamicBody(
             position=(upper_arm.transform * (arm_length, 0)),
@@ -160,7 +168,7 @@ class BasketballShooterEnv(gym.Env):
         joint2 = world.CreateRevoluteJoint(
             bodyA=upper_arm,
             bodyB=lower_arm,
-            localAnchorA=(self._options['arm']['upper']['length'], 0),
+            localAnchorA=(options['arm']['upper']['length'], 0),
             localAnchorB=(0, 0),
             enableMotor=True,
             motorSpeed=0,
@@ -168,10 +176,10 @@ class BasketballShooterEnv(gym.Env):
         )
 
         # Basket
-        (position_x, position_y) = self._options['basket']['position']
-        [offset_x_min, offset_x_max] = self._options['basket']['random_position_offset']['x']
-        [offset_y_min, offset_y_max] = self._options['basket']['random_position_offset']['y']
-        r = self._options['basket']['size'] * self._options['ball']['radius']
+        (position_x, position_y) = options['basket']['position']
+        [offset_x_min, offset_x_max] = options['basket']['random_position_offset']['x']
+        [offset_y_min, offset_y_max] = options['basket']['random_position_offset']['y']
+        r = options['basket']['size'] * options['ball']['radius']
         w = 0.02  # We make the width of the basked line aconstant.
 
         basket = world.CreateStaticBody(
@@ -187,14 +195,14 @@ class BasketballShooterEnv(gym.Env):
         )
 
         # Ball
-        (position_x, position_y) = self._options['ball']['position']
-        if self._options['ball']['position_relative']:
-            (origin_x, origin_y) = lower_arm.transform * (self._options['arm']['lower']['length'], 0)
+        (position_x, position_y) = options['ball']['position']
+        if options['ball']['position_relative']:
+            (origin_x, origin_y) = lower_arm.transform * (options['arm']['lower']['length'], 0)
             position_x += origin_x
             position_y += origin_y
 
-        [offset_x_min, offset_x_max] = self._options['ball']['random_position_offset']['x']
-        [offset_y_min, offset_y_max] = self._options['ball']['random_position_offset']['y']
+        [offset_x_min, offset_x_max] = options['ball']['random_position_offset']['x']
+        [offset_y_min, offset_y_max] = options['ball']['random_position_offset']['y']
 
         ball = world.CreateDynamicBody(
             position=(
@@ -203,7 +211,7 @@ class BasketballShooterEnv(gym.Env):
             )
         )
         ball.CreateCircleFixture(
-            radius=self._options['ball']['radius'],
+            radius=options['ball']['radius'],
             density=0.01, friction=0.1
         )
 
@@ -216,12 +224,15 @@ class BasketballShooterEnv(gym.Env):
         self._ball = ball
 
     def _get_obs(self):
+        if self._episode_options is not None:
+            (width, height) = self._episode_options['simulation']['world_size']
+        else:
+            (width, height) = self._options['simulation']['world_size']
+
         joint1_angle = (math.degrees(self._upper_arm.angle) % 360) / 360
         joint2_angle = (math.degrees(self._lower_arm.angle) % 360) / 360
-
-        (width, height) = self._options['simulation']['world_size']
-        ball_x = self._ball.position.x / width
-        ball_y = self._ball.position.y / height
+        ball_x = np.clip(self._ball.position.x / width, 0, 1)
+        ball_y = np.clip(self._ball.position.y / height, 0, 1)
 
         return np.array([joint1_angle, joint2_angle, ball_x, ball_y], dtype=np.float32)
 
@@ -245,6 +256,12 @@ class BasketballShooterEnv(gym.Env):
     def reset(self, seed: Optional[int] = None, options: Optional[dict] = None):
         super().reset(seed=seed)
 
+        if options is not None:
+            self._episode_options = options
+        else:
+            self._episode_options = None
+            options = self._options
+
         if self._world is not None:
             for body in self._world.bodies:
                 self._world.DestroyBody(body)
@@ -252,9 +269,7 @@ class BasketballShooterEnv(gym.Env):
 
         self._create_world()
 
-        skip_steps = 0
-        if options is not None and 'skip_steps' in options:
-            skip_steps = options['skip_steps']
+        skip_steps = options['simulation']['skip_initial_steps']
 
         for _ in range(skip_steps):
             self._world.Step(
@@ -328,6 +343,7 @@ class BasketballShooterEnv(gym.Env):
             self.window = pygame.display.set_mode(
                 (round(width * ppm), round(height * ppm))
             )
+            pygame.display.set_caption('Basketball shooter')
         if self.clock is None and self.render_mode == "human":
             self.clock = pygame.time.Clock()
 
