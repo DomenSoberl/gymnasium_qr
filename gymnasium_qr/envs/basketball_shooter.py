@@ -30,7 +30,7 @@ class BasketballShooterEnv(gym.Env):
                 },
                 'lower': {
                     'length': 0.5,
-                    'angle': 30,
+                    'angle': 60,
                     'random_angle_offset': [-10, 10]
                 }
             },
@@ -73,8 +73,8 @@ class BasketballShooterEnv(gym.Env):
 
         # Observation space [upper joint, lower joint, ball x, ball y]
         self.observation_space = gym.spaces.Box(
-            low=0,
-            high=1,
+            low=-np.inf,
+            high=np.inf,
             shape=(4,),
             dtype=np.float32
         )
@@ -127,7 +127,7 @@ class BasketballShooterEnv(gym.Env):
 
         # Lower arm
         arm_length = options['arm']['lower']['length']
-        arm_angle = options['arm']['lower']['angle']
+        arm_angle = options['arm']['upper']['angle'] + options['arm']['lower']['angle']
         [offset_min, offset_max] = options['arm']['lower']['random_angle_offset']
 
         lower_arm = world.CreateDynamicBody(
@@ -229,16 +229,16 @@ class BasketballShooterEnv(gym.Env):
         else:
             (width, height) = self._options['simulation']['world_size']
 
-        joint1_angle = (math.degrees(self._upper_arm.angle) % 360) / 360
-        joint2_angle = (math.degrees(self._lower_arm.angle) % 360) / 360
-        ball_x = np.clip(self._ball.position.x / width, 0, 1)
-        ball_y = np.clip(self._ball.position.y / height, 0, 1)
+        joint1_angle = math.degrees(self._upper_arm.angle) 
+        joint2_angle = math.degrees(self._lower_arm.angle) - joint1_angle
+        ball_x = self._ball.position.x
+        ball_y = self._ball.position.y
 
         return np.array([joint1_angle, joint2_angle, ball_x, ball_y], dtype=np.float32)
 
     def _get_info(self):
-        joint1_angle = math.degrees(self._upper_arm.angle) % 360
-        joint2_angle = math.degrees(self._lower_arm.angle) % 360
+        joint1_angle = math.degrees(self._upper_arm.angle) % 360 - 180
+        joint2_angle = joint1_angle + math.degrees(self._lower_arm.angle) % 360 - 180
 
         ball_x = self._ball.position.x
         ball_y = self._ball.position.y
@@ -278,7 +278,9 @@ class BasketballShooterEnv(gym.Env):
             )
 
         self._episode_step = 0
+        self._trajectory_started = False
         self._trajectory = []
+        self._last_ball_y = self._ball.position.y
 
         observation = self._get_obs()
         info = self._get_info()
@@ -303,7 +305,13 @@ class BasketballShooterEnv(gym.Env):
         )
 
         self._episode_step += 1
-        self._trajectory.append((self._ball.position.x, self._ball.position.y))
+
+        if not self._trajectory_started and self._ball.position.y > self._last_ball_y:
+            self._trajectory_started = True
+        self._last_ball_y = self._ball.position.y
+
+        if self._trajectory_started:
+            self._trajectory.append((self._ball.position.x, self._ball.position.y))
 
         if self.render_mode == "human" or self.render_mode == "png":
             self._render_frame()
@@ -344,6 +352,7 @@ class BasketballShooterEnv(gym.Env):
                 (round(width * ppm), round(height * ppm))
             )
             pygame.display.set_caption('Basketball shooter')
+
         if self.clock is None and self.render_mode == "human":
             self.clock = pygame.time.Clock()
 

@@ -1,1 +1,2 @@
 from gymnasium_qr.wrappers.one_shot_scenario import OneShotScenario
+from gymnasium_qr.wrappers.trajectory_observer import TrajectoryObserver
