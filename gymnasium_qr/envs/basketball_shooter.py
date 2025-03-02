@@ -245,12 +245,20 @@ class BasketballShooterEnv(gym.Env):
         goal_x = self._basket.position.x
         goal_y = self._basket.position.y
 
+        basket_collision = False
+        if len(self._basket.contacts) > 0:
+            for contact in self._basket.contacts:
+                for point in contact.contact.worldManifold.points:
+                    if point != (0, 0):
+                        basket_collision = True
+
         return {
             "step": self.episode_step,
             "joints": np.array([joint1_angle, joint2_angle], dtype=np.float32),
             "ball": np.array([ball_x, ball_y], dtype=np.float32),
             "goal": np.array([goal_x, goal_y], dtype=np.float32),
-            "distance": math.dist((ball_x, ball_y), (goal_x, goal_y))
+            "distance": math.dist((ball_x, ball_y), (goal_x, goal_y)),
+            "basket_touched": basket_collision
         }
 
     def reset(self, seed: Optional[int] = None, options: Optional[dict] = None):
@@ -305,17 +313,12 @@ class BasketballShooterEnv(gym.Env):
             velocityIterations=4, positionIterations=4
         )
 
-        collision = False
-        if len(self._basket.contacts) > 0:
-            for contact in self._basket.contacts:
-                for point in contact.contact.worldManifold.points:
-                    if point != (0, 0):
-                        collision = True
-
         self.episode_step += 1
 
         observation = self._get_obs()
         info = self._get_info()
+
+        basket_collision = info['basket_touched']
 
         if self.last_observation is not None:
             [_, _, _, y0] = self.last_observation
@@ -325,7 +328,7 @@ class BasketballShooterEnv(gym.Env):
             if not self.trajectory_started and dy > 0:
                 self.trajectory_started = True
 
-            if not self.trajectory_ended and collision:
+            if not self.trajectory_ended and basket_collision:
                 self.trajectory_ended = True
 
         if self.trajectory_started and not self.trajectory_ended:

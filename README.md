@@ -112,12 +112,13 @@ while not episode_over:
 
 Extends the observations with two additional variables:
 
-| Index | Quantity                                                           |
-|:-----:|:-------------------------------------------------------------------|
-|4      | The maximum height reached by the ball: [0, np.inf]                |
-|5      | The minimum horizontal distance from the basked: [-np.inf, np.inf] |
+| Index | Quantity                                                                    |
+|:-----:|:----------------------------------------------------------------------------|
+|4      | The maximum height reached by the ball: [0, np.inf]                         |
+|5      | The horizontal position of the ball at the highest point: [-np.inf, np.inf] |
+|6      | The horizontal velocity of the ball at the highest point: [-np.inf, np.inf] |
 
-The maximum height is being recorded only after the trajectory starts being recorded (from the moment the ball first moves upwards). Before that point it is observed as 0. The minimum horizontal distance from the basket is being observed after the trajectory starts being recorded and up to the moment when the ball passes the vertical alignment with the basket in a downward movement. Before and after it is being locked respectively to the initial and final horizontal offset from the basket. This observation is useful for determining by how much the goal has been missed.
+The maximum height is being observed only while the trajectory is being recorded. That is from the moment the ball first moves upwards until either the ball touches the basket (collision) or the episode ends. It is possible that the trajectory is not recorded at all, i.e. if the arm fails to accelerate the ball upwards. In this case, all the values are 0.
 
 Example:
 
@@ -132,5 +133,5 @@ while not episode_over:
     observation, reward, terminated, truncated, info = env.step(action)
     episode_over = terminated or truncated
 
-print(f'Max height: {observation[4]}, goal missed by: {observation[5]}')
+print(f'Top point was ({observation[4]} m, {observation[5]} m), with vertical speed {observation[6]} m/s.')
 ```

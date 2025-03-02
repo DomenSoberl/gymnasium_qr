@@ -11,10 +11,8 @@ class TrajectoryObserver(gym.ObservationWrapper):
         if type(env.unwrapped) is not BasketballShooterEnv:
             raise AttributeError(f'The wrapped environment must be an instance of the BasketballShooterEnv class.')
 
-        # Redefine the observation space to contain:
-        # - the highest y point reached,
-        # - the final horizontal distance from the goal.
-        self._obs_space_size = self.observation_space.shape[0] + 2
+        # Add top point (x, y) and vx.
+        self._obs_space_size = self.observation_space.shape[0] + 3
 
         self.observation_space = gym.spaces.Box(
             low=-np.inf,
@@ -24,32 +22,29 @@ class TrajectoryObserver(gym.ObservationWrapper):
         )
 
     def observation(self, observation: ObsType) -> WrapperObsType:
+        (basket_x, basket_y) = self.env.unwrapped._basket.position
+        (ball_x, ball_y) = self.env.unwrapped._ball.position
+
         # After reset
         if self.env.unwrapped.episode_step == 0:
-            if self.env.unwrapped._episode_options is not None:
-                options = self.env.unwrapped._episode_options
-            else:
-                options = self.env.unwrapped._options
-
-            (width, height) = options['simulation']['world_size']
-            self._basket_position = options['basket']['position']
-            (basket_x, _) = self._basket_position
-
-            self._horz_miss = observation[2] - basket_x
+            self._last_x = ball_x
+            self._max_x = 0
             self._max_y = 0
+            self._max_vx = 0
 
         # After step
         else:
-            x = observation[2]
-            y = observation[3]
-            (basket_x, basket_y) = self._basket_position
-
             trajectory_started = self.env.unwrapped.trajectory_started
+            trajectory_ended = self.env.unwrapped.trajectory_ended
+            trajectory_active = trajectory_started and not trajectory_ended
 
-            if trajectory_started and y > self._max_y:
-                self._max_y = y
-            if trajectory_started and y >= basket_y:
-                self._horz_miss = x - basket_x
+            if trajectory_active and ball_y > self._max_y:
+                dt = 1 / self.env.unwrapped.metadata['render_fps']
+                self._max_x = ball_x
+                self._max_y = ball_y
+                self._max_vx = (ball_x - self._last_x) / dt
 
-            additional_obs = np.array([self._max_y, self._horz_miss], dtype=np.float32)
+            self._last_x = ball_x
+
+            additional_obs = np.array([self._max_x, self._max_y, self._max_vx], dtype=np.float32)
             return np.concatenate((observation, additional_obs))

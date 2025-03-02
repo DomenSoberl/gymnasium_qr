@@ -16,6 +16,6 @@ for episode in range(10):
         observation, reward, terminated, truncated, info = env.step(action)
         episode_over = terminated or truncated
 
-    print(f'Max height: {observation[4]}, goal missed by: {observation[5]}')
+    print(f'Top point was ({observation[4]} m, {observation[5]} m), with vertical speed {observation[6]} m/s.')
 
 env.close()
