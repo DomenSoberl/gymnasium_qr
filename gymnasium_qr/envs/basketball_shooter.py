@@ -229,7 +229,7 @@ class BasketballShooterEnv(gym.Env):
         else:
             (width, height) = self._options['simulation']['world_size']
 
-        joint1_angle = math.degrees(self._upper_arm.angle) 
+        joint1_angle = math.degrees(self._upper_arm.angle)
         joint2_angle = math.degrees(self._lower_arm.angle) - joint1_angle
         ball_x = self._ball.position.x
         ball_y = self._ball.position.y
@@ -246,7 +246,7 @@ class BasketballShooterEnv(gym.Env):
         goal_y = self._basket.position.y
 
         return {
-            "step": self._episode_step,
+            "step": self.episode_step,
             "joints": np.array([joint1_angle, joint2_angle], dtype=np.float32),
             "ball": np.array([ball_x, ball_y], dtype=np.float32),
             "goal": np.array([goal_x, goal_y], dtype=np.float32),
@@ -277,10 +277,11 @@ class BasketballShooterEnv(gym.Env):
                 velocityIterations=4, positionIterations=4
             )
 
-        self._episode_step = 0
-        self._trajectory_started = False
-        self._trajectory = []
-        self._last_ball_y = self._ball.position.y
+        self.episode_step = 0
+        self.last_observation = None
+        self.trajectory_started = False
+        self.trajectory_ended = False
+        self.trajectory = []
 
         observation = self._get_obs()
         info = self._get_info()
@@ -304,20 +305,36 @@ class BasketballShooterEnv(gym.Env):
             velocityIterations=4, positionIterations=4
         )
 
-        self._episode_step += 1
+        collision = False
+        if len(self._basket.contacts) > 0:
+            for contact in self._basket.contacts:
+                for point in contact.contact.worldManifold.points:
+                    if point != (0, 0):
+                        collision = True
 
-        if not self._trajectory_started and self._ball.position.y > self._last_ball_y:
-            self._trajectory_started = True
-        self._last_ball_y = self._ball.position.y
+        self.episode_step += 1
 
-        if self._trajectory_started:
-            self._trajectory.append((self._ball.position.x, self._ball.position.y))
+        observation = self._get_obs()
+        info = self._get_info()
+
+        if self.last_observation is not None:
+            [_, _, _, y0] = self.last_observation
+            [_, _, _, y1] = observation
+            dy = y1 - y0
+
+            if not self.trajectory_started and dy > 0:
+                self.trajectory_started = True
+
+            if not self.trajectory_ended and collision:
+                self.trajectory_ended = True
+
+        if self.trajectory_started and not self.trajectory_ended:
+            self.trajectory.append((self._ball.position.x, self._ball.position.y))
 
         if self.render_mode == "human" or self.render_mode == "png":
             self._render_frame()
 
-        observation = self._get_obs()
-        info = self._get_info()
+        self.last_observation = observation
 
         reward = 1 if info['distance'] < 0.01 else 0
 
@@ -330,7 +347,7 @@ class BasketballShooterEnv(gym.Env):
         )
 
         truncated = bool(
-            self._episode_step >= self._options['simulation']['episode_length']
+            self.episode_step >= self._options['simulation']['episode_length']
         )
 
         return observation, reward, terminated, truncated, info
@@ -367,7 +384,7 @@ class BasketballShooterEnv(gym.Env):
         self._paint_body(canvas, self._ball, "dark red")
 
         p0 = None
-        for p1 in self._trajectory:
+        for p1 in self.trajectory:
             if p0 is not None:
                 self._paint_segment(canvas, p0, p1, "yellow")
             p0 = p1

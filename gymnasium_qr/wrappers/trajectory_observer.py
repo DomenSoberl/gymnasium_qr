@@ -25,7 +25,7 @@ class TrajectoryObserver(gym.ObservationWrapper):
 
     def observation(self, observation: ObsType) -> WrapperObsType:
         # After reset
-        if self.env.unwrapped._episode_step == 0:
+        if self.env.unwrapped.episode_step == 0:
             if self.env.unwrapped._episode_options is not None:
                 options = self.env.unwrapped._episode_options
             else:
@@ -44,7 +44,7 @@ class TrajectoryObserver(gym.ObservationWrapper):
             y = observation[3]
             (basket_x, basket_y) = self._basket_position
 
-            trajectory_started = self.env.unwrapped._trajectory_started
+            trajectory_started = self.env.unwrapped.trajectory_started
 
             if trajectory_started and y > self._max_y:
                 self._max_y = y

@@ -40,7 +40,7 @@ class OneShotScenario(gym.Wrapper):
         return super().reset(seed=seed, options=self._options)
 
     def step(self, action: np.ndarray = None):
-        if self._env.unwrapped._episode_step < self._action_duration:
+        if self._env.unwrapped.episode_step < self._action_duration:
             return super().step(self._action)
         else:
             return super().step(np.array([0, 0]))
