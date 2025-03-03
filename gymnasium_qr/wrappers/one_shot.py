@@ -7,7 +7,7 @@ from gymnasium.core import ActType, ObsType
 from gymnasium_qr.envs.basketball_shooter import BasketballShooterEnv
 
 
-class OneShotScenario(gym.Wrapper):
+class OneShot(gym.Wrapper):
     def __init__(self, env: gym.Env[ObsType, ActType]):
         super().__init__(env)
 

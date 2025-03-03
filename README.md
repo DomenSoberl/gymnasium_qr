@@ -108,7 +108,7 @@ while not episode_over:
     episode_over = terminated or truncated
 ```
 
-### Observe trajectory
+### Trajectory observer
 
 Extends the observations with two additional variables:
 
@@ -135,3 +135,18 @@ while not episode_over:
 
 print(f'Top point was ({observation[4]} m, {observation[5]} m), with vertical speed {observation[6]} m/s.')
 ```
+
+### No basket
+
+This wrapper removes the basket from the experimental setup. The coordinates are still there and the distance of the ball from the basket is still returned by the 'info' method, but it's physical manifestation is removed from the world.
+
+Usage:
+
+```
+from gymnasium_qr.wrappers import NoBasket
+
+env = gym.make("gymnasium_qr/BasketballShooter-v0", render_mode="human")
+env = NoBasket(env)
+```
+
+The rest of the functionality is equivalent to the original class.

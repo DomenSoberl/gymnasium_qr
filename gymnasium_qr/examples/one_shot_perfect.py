@@ -1,10 +1,10 @@
 import gymnasium as gym
 import gymnasium_qr
-from gymnasium_qr.wrappers import OneShotScenario
+from gymnasium_qr.wrappers import OneShot
 
 
 env = gym.make("gymnasium_qr/BasketballShooter-v0", render_mode="human")
-env = OneShotScenario(env)
+env = OneShot(env)
 
 observation, info = env.reset(
     options={
