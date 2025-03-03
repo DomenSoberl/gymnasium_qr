@@ -10,7 +10,6 @@ from gymnasium_qr.envs.basketball_shooter import BasketballShooterEnv
 class OneShotScenario(gym.Wrapper):
     def __init__(self, env: gym.Env[ObsType, ActType]):
         super().__init__(env)
-        self._env = env
 
         if type(env.unwrapped) is not BasketballShooterEnv:
             raise AttributeError(f'The wrapped environment must be an instance of the BasketballShooterEnv class.')
@@ -40,7 +39,7 @@ class OneShotScenario(gym.Wrapper):
         return super().reset(seed=seed, options=self._options)
 
     def step(self, action: np.ndarray = None):
-        if self._env.unwrapped.episode_step < self._action_duration:
+        if self.env.unwrapped.episode_step < self._action_duration:
             return super().step(self._action)
         else:
             return super().step(np.array([0, 0]))
