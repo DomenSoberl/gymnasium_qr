@@ -15,15 +15,15 @@ class OneShot(gym.Wrapper):
             raise AttributeError(f'The wrapped environment must be an instance of the BasketballShooterEnv class.')
 
         self._options = copy.deepcopy(env.unwrapped._options)
-        self._options['simulation']['skip_initial_steps'] = 100
-        self._options['arm']['upper']['angle'] = -60
+        self._options['arm']['position'] = (0.5, 1)
+        self._options['arm']['upper']['angle'] = -90
         self._options['arm']['upper']['random_angle_offset'] = [0, 0]
-        self._options['arm']['lower']['angle'] = 50
+        self._options['arm']['lower']['angle'] = 0
         self._options['arm']['lower']['random_angle_offset'] = [0, 0]
         self._options['basket']['random_position_offset']['x'] = [0, 0]
         self._options['basket']['random_position_offset']['y'] = [0, 0]
         self._options['ball']['position_relative'] = True
-        self._options['ball']['position'] = (-0.05, 0.1)
+        self._options['ball']['position'] = (0.1, 0.1)
         self._options['ball']['random_position_offset']['x'] = [0, 0]
         self._options['ball']['random_position_offset']['y'] = [0, 0]
 
@@ -36,10 +36,41 @@ class OneShot(gym.Wrapper):
             if 'duration' in options:
                 self._action_duration = options['duration']
 
-        return super().reset(seed=seed, options=self._options)
+        env = self.env.unwrapped
+
+        render_mode = env.render_mode
+        env.render_mode = None
+
+        observation, info = super().reset(seed=seed, options=self._options)
+
+        (x, y) = env._lower_arm.fixtures[0].shape.vertices[0]
+        r = env._ball.fixtures[0].shape.radius
+
+        self._grip = env._lower_arm.CreatePolygonFixture(
+            vertices=[
+                (x, y),
+                (x + 0.02, y),
+                (x + 0.02, y + 3*r/2),
+                (x, y + 3*r/2)
+            ],
+            density=1, friction=0.1
+        )
+
+        env.render_mode = render_mode
+        if env.render_mode == "human":
+            env._render_frame()
+
+        return observation, info
+
+    def _release_grip(self):
+        if self._grip is not None:
+            env = self.env.unwrapped
+            env._lower_arm.DestroyFixture(self._grip)
+            self._grip = None
 
     def step(self, action: np.ndarray = None):
         if self.env.unwrapped.episode_step < self._action_duration:
             return super().step(self._action)
         else:
+            self._release_grip()
             return super().step(np.array([0, 0]))

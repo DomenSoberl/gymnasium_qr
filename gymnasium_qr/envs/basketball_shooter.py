@@ -143,15 +143,6 @@ class BasketballShooterEnv(gym.Env):
             ],
             density=1, friction=0.1
         )
-        lower_arm.CreatePolygonFixture(
-            vertices=[
-                (arm_length, -arm_width),
-                (1.01 * arm_length, -arm_width),
-                (1.01 * arm_length, 2 * arm_width),
-                (arm_length, 2 * arm_width)
-            ],
-            density=1, friction=0.1
-        )
 
         # Joint between the mount and the upper arm
         joint1 = world.CreateRevoluteJoint(
