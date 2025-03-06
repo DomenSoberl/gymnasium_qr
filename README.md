@@ -20,7 +20,7 @@ Interaction:
 |Observation  | Box(-np.inf, np.inf, (4,), float32) |
 |Reward       | {0, 1}                              |
 
-The episode length is 300 steps by default. An episode is terminated when the ball hits the basket or moves outside the visible are (left, right or bottom). The upper movement is not restricted. When the ball first starts moving upwards, a trajectory is being drawn until the end of the episode.
+The episode length is 300 steps by default. An episode is terminated when the ball hits the basket or falls to the ground. When the ball first starts moving upwards, a trajectory is being drawn until the end of the episode.
 
 ### Actions and observations
 

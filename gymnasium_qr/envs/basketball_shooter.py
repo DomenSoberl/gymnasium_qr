@@ -336,8 +336,7 @@ class BasketballShooterEnv(gym.Env):
         (width, height) = self._options['simulation']['world_size']
 
         terminated = bool(
-            info['distance'] < 0.01 or
-            ball_x < 0 or ball_x > width or ball_y < 0
+            info['distance'] < 0.01 or ball_y < 0
         )
 
         truncated = bool(
@@ -350,8 +349,14 @@ class BasketballShooterEnv(gym.Env):
         return None
 
     def _render_frame(self):
-        (width, height) = self._options['simulation']['world_size']
-        ppm = self._options['simulation']['ppm']
+        # Which options to use?
+        if self._episode_options is not None:
+            options = self._episode_options
+        else:
+            options = self._options
+
+        (width, height) = options['simulation']['world_size']
+        ppm = options['simulation']['ppm']
 
         if not self._pygame_initialized:
             pygame.init()
@@ -370,17 +375,17 @@ class BasketballShooterEnv(gym.Env):
         canvas = pygame.Surface((round(width * ppm), round(height * ppm)))
         canvas.fill((0, 0, 0))
 
-        self._paint_body(canvas, self._upper_arm, "blue")
-        self._paint_body(canvas, self._lower_arm, "blue")
-        self._paint_circle(canvas, self._upper_arm.position, 0.2, "dark blue")
-        self._paint_circle(canvas, self._lower_arm.position, 0.2, "dark blue")
-        self._paint_body(canvas, self._basket, "dark green")
-        self._paint_body(canvas, self._ball, "dark red")
+        self._paint_body(canvas, self._upper_arm, "blue", ppm)
+        self._paint_body(canvas, self._lower_arm, "blue", ppm)
+        self._paint_circle(canvas, self._upper_arm.position, 0.2, "dark blue", ppm)
+        self._paint_circle(canvas, self._lower_arm.position, 0.2, "dark blue", ppm)
+        self._paint_body(canvas, self._basket, "dark green", ppm)
+        self._paint_body(canvas, self._ball, "dark red", ppm)
 
         p0 = None
         for p1 in self.trajectory:
             if p0 is not None:
-                self._paint_segment(canvas, p0, p1, "yellow")
+                self._paint_segment(canvas, p0, p1, "yellow", ppm)
             p0 = p1
 
         if self.render_mode == "human":
@@ -393,17 +398,13 @@ class BasketballShooterEnv(gym.Env):
             pygame.image.save(canvas, f'frame{self._frame_number}.png')
             self._frame_number += 1
 
-    def _paint_circle(self, canvas, position, radius, color):
-        ppm = self._options['simulation']['ppm']
-
+    def _paint_circle(self, canvas, position, radius, color, ppm):
         (x, y) = position
         vx = round(x * ppm)
         vy = canvas.get_height() - round(y * ppm)
         pygame.draw.circle(canvas, color, (vx, vy), 10)
 
-    def _paint_segment(self, canvas, p0, p1, color):
-        ppm = self._options['simulation']['ppm']
-
+    def _paint_segment(self, canvas, p0, p1, color, ppm):
         (x0, y0) = p0
         vx0 = round(x0 * ppm)
         vy0 = canvas.get_height() - round(y0 * ppm)
@@ -414,8 +415,7 @@ class BasketballShooterEnv(gym.Env):
 
         pygame.draw.line(canvas, color, (vx0, vy0), (vx1, vy1), 1)
 
-    def _paint_body(self, canvas, body, color):
-        ppm = self._options['simulation']['ppm']
+    def _paint_body(self, canvas, body, color, ppm):
         height = canvas.get_height()
 
         for fixture in body.fixtures:
