@@ -27,6 +27,23 @@ class OneShot(gym.Wrapper):
         self._options['ball']['random_position_offset']['x'] = [0, 0]
         self._options['ball']['random_position_offset']['y'] = [0, 0]
 
+    def _append_info(self, info):
+        info["release_time"] = self._release_time
+
+        if self._release_data is not None:
+            (position, velocity, angle) = self._release_data
+            info["relesed"] = True
+            info["release_ball_position"] = position
+            info["release_ball_velocity"] = velocity
+            info["release_ball_angle"] = angle
+        else:
+            info["relesed"] = False
+            info["release_ball_position"] = np.array([0, 0], dtype=np.float32)
+            info["release_ball_velocity"] = 0
+            info["release_ball_angle"] = 0
+
+        return info
+
     def reset(self, seed: Optional[int] = None, options: Optional[dict] = None):
         self._action = np.array([0, 0])
         self._action_duration = self._options['simulation']['episode_length']
@@ -37,11 +54,13 @@ class OneShot(gym.Wrapper):
                 self._release_time = round(options['duration'], 3)
 
         env = self.env.unwrapped
+        self._release_data = None
 
         render_mode = env.render_mode
         env.render_mode = None
 
         observation, info = super().reset(seed=seed, options=self._options)
+        info = self._append_info(info)
 
         (x, y) = env._lower_arm.fixtures[0].shape.vertices[0]
         r = env._ball.fixtures[0].shape.radius
@@ -70,6 +89,15 @@ class OneShot(gym.Wrapper):
             env._lower_arm.DestroyFixture(self._grip)
             self._grip = None
 
+    def _store_release_data(self):
+        info = self.env.unwrapped._get_info()
+        (ball_x, ball_y) = info["ball_position"]
+        self._release_data = (
+            np.array([ball_x, ball_y], dtype=np.float32),
+            float(info["ball_velocity"]),
+            float(info["ball_angle"])
+        )
+
     def step(self, action: np.ndarray = None):
         env = self.env.unwrapped
 
@@ -77,30 +105,30 @@ class OneShot(gym.Wrapper):
         t1 = self._current_time + env.timestep  # Time at next step.
         tr = self._release_time                 # Release time.
 
-        ret_val = None
-
         if t0 <= tr and tr < t1:
             render_mode = env.render_mode
             env.render_mode = None
 
             episode_step = env.episode_step
+            timestep = env.timestep
 
             step1 = tr - t0
             step2 = t1 - tr
 
             if step1 > 0:
-                timestep = env.timestep
                 env.timestep = step1
-                ret_val = super().step(self._action)
-                env.timestep = timestep
+                observation, reward, terminated, truncated, info = super().step(self._action)
+                info = self._append_info(info)
 
             self._release_grip()
+            self._store_release_data()
 
             if step2 > 0:
-                timestep = env.timestep
                 env.timestep = step2
-                ret_val = super().step([0, 0])
-                env.timestep = timestep
+                observation, reward, terminated, truncated, info = super().step([0, 0])
+                info = self._append_info(info)
+
+            env.timestep = timestep
 
             env.render_mode = render_mode
             if env.render_mode == "human":
@@ -109,11 +137,13 @@ class OneShot(gym.Wrapper):
             env.episode_step = episode_step + 1
 
         elif t0 < tr:
-            ret_val = super().step(self._action)
+            observation, reward, terminated, truncated, info = super().step(self._action)
+            info = self._append_info(info)
 
         else:  # tr < t0
-            ret_val = super().step(np.array([0, 0]))
+            observation, reward, terminated, truncated, info = super().step(np.array([0, 0]))
+            info = self._append_info(info)
 
         self._current_time = t1
 
-        return ret_val
+        return observation, reward, terminated, truncated, info

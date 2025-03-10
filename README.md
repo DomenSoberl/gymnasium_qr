@@ -20,7 +20,7 @@ Interaction:
 |Observation  | Box(-np.inf, np.inf, (4,), float32) |
 |Reward       | {0, 1}                              |
 
-The episode length is 300 steps by default. An episode is terminated when the ball hits the basket or falls to the ground. When the ball first starts moving upwards, a trajectory is being drawn until the end of the episode.
+The episode length is 300 steps by default. An episode is terminated when the ball hits the basket or falls to the ground.
 
 ### Actions and observations
 
@@ -85,6 +85,25 @@ observations, info = env.reset(options=custom_options)
 
 ## Wrappers
 
+### Trajectory
+
+Draws a trajectory from the moment the ball starts movinf upwards, and until it either touches the basket or the episodes terminates. After the episode finishes, the following methods are available to observe the property of the made trajectory:
+
+The length of the trajectory in steps.  
+`trajectory_length() -> int`
+
+
+The highest point (max y) of the trajectory. If no trajectory has been made, `None` is returned.  
+`highest_point(self) -> np.ndarray`
+
+
+The list of all the points at (or close to) the height y. The first returned list contains the points crossing the horizontal line y in upward motion, the second list in the downward motion.  
+`points_at_height(self, y: float) -> (list[np.ndarray], list[np.ndarray])`
+
+The velocity vector at the given point on the trajectory. If the given point is not found on the trajectory, [nan, nan] is returned.  
+`velocity_at(self, point: np.ndarray) -> np.ndarray`
+
+
 ### One shoot
 
 A simplified experimental setup, where only one action of a certain duration is executed at the start of the episode. The action is given with the `reset` method. The `action` parameter given with the `step` function is ignored. Custom settings are partially overridden when given with the `make` method, and ignored if given with the `reset` method.
@@ -106,34 +125,6 @@ episode_over = False
 while not episode_over:
     observation, reward, terminated, truncated, info = env.step(action=None)
     episode_over = terminated or truncated
-```
-
-### Trajectory observer
-
-Extends the observations with two additional variables:
-
-| Index | Quantity                                                                    |
-|:-----:|:----------------------------------------------------------------------------|
-|4      | The maximum height reached by the ball: [0, np.inf]                         |
-|5      | The horizontal position of the ball at the highest point: [-np.inf, np.inf] |
-|6      | The horizontal velocity of the ball at the highest point: [-np.inf, np.inf] |
-
-The maximum height is being observed only while the trajectory is being recorded. That is from the moment the ball first moves upwards until either the ball touches the basket (collision) or the episode ends. It is possible that the trajectory is not recorded at all, i.e. if the arm fails to accelerate the ball upwards. In this case, all the values are 0.
-
-Example:
-
-```
-env = gym.make("gymnasium_qr/BasketballShooter-v0", render_mode="human")
-env = TrajectoryObserver(env)
-env.reset()
-
-episode_over = False
-while not episode_over:
-    action = env.action_space.sample()
-    observation, reward, terminated, truncated, info = env.step(action)
-    episode_over = terminated or truncated
-
-print(f'Top point was ({observation[4]} m, {observation[5]} m), with vertical speed {observation[6]} m/s.')
 ```
 
 ### No basket

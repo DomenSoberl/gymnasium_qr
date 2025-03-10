@@ -80,6 +80,7 @@ class BasketballShooterEnv(gym.Env):
             dtype=np.float32
         )
 
+        # Rendering
         assert render_mode is None or render_mode in self.metadata['render_modes']
         self.render_mode = render_mode
         self.timestep = 1.0/self.metadata['render_fps']
@@ -90,8 +91,10 @@ class BasketballShooterEnv(gym.Env):
         self._pygame_initialized = False
         self.window = None
         self.clock = None
-
         self._world = None
+
+        self._pre_render_callbacks = []
+        self._post_render_callbacks = []
 
     def _create_world(self):
         # Which options to use?
@@ -220,11 +223,6 @@ class BasketballShooterEnv(gym.Env):
         self._ball = ball
 
     def _get_obs(self):
-        if self._episode_options is not None:
-            (width, height) = self._episode_options['simulation']['world_size']
-        else:
-            (width, height) = self._options['simulation']['world_size']
-
         joint1_angle = math.degrees(self._upper_arm.angle)
         joint2_angle = math.degrees(self._lower_arm.angle) - joint1_angle
         ball_x = self._ball.position.x
@@ -238,8 +236,10 @@ class BasketballShooterEnv(gym.Env):
 
         ball_x = self._ball.position.x
         ball_y = self._ball.position.y
-        goal_x = self._basket.position.x
-        goal_y = self._basket.position.y
+        basket_x = self._basket.position.x
+        basket_y = self._basket.position.y
+
+        distance = math.dist((ball_x, ball_y), (basket_x, basket_y))
 
         basket_collision = False
         if len(self._basket.contacts) > 0:
@@ -250,11 +250,15 @@ class BasketballShooterEnv(gym.Env):
 
         return {
             "step": self.episode_step,
-            "joints": np.array([joint1_angle, joint2_angle], dtype=np.float32),
-            "ball": np.array([ball_x, ball_y], dtype=np.float32),
-            "goal": np.array([goal_x, goal_y], dtype=np.float32),
-            "distance": math.dist((ball_x, ball_y), (goal_x, goal_y)),
-            "basket_touched": basket_collision
+            "joint_angle": np.array([joint1_angle, joint2_angle], dtype=np.float32),
+            "joint_velocity": np.array([self._joint1_vel, self._joint2_vel], dtype=np.float32),
+            "ball_position": np.array([ball_x, ball_y], dtype=np.float32),
+            "ball_velocity": self._ball_vel,
+            "ball_angle": self._ball_ang,
+            "basket_position": np.array([basket_x, basket_y], dtype=np.float32),
+            "distance": distance,
+            "basket_touched": basket_collision,
+            "basket_hit": (distance < 0.01)
         }
 
     def reset(self, seed: Optional[int] = None, options: Optional[dict] = None):
@@ -283,9 +287,13 @@ class BasketballShooterEnv(gym.Env):
 
         self.episode_step = 0
         self.last_observation = None
-        self.trajectory_started = False
-        self.trajectory_ended = False
-        self.trajectory = []
+
+        self._joint1_vel = 0
+        self._joint2_vel = 0
+        self._ball_vel_x = 0
+        self._ball_vel_y = 0
+        self._ball_vel = 0
+        self._ball_ang = 0
 
         observation = self._get_obs()
         info = self._get_info()
@@ -317,18 +325,30 @@ class BasketballShooterEnv(gym.Env):
         basket_collision = info['basket_touched']
 
         if self.last_observation is not None:
-            [_, _, _, y0] = self.last_observation
-            [_, _, _, y1] = observation
-            dy = y1 - y0
+            [angle1_0, angle2_0, x0, y0] = self.last_observation
+            [angle1_1, angle2_1, x1, y1] = self._get_obs()
 
-            if not self.trajectory_started and dy > 0:
-                self.trajectory_started = True
+            joint1_vel = angle1_1 - angle1_0
+            joint2_vel = angle2_1 - angle2_0
 
-            if not self.trajectory_ended and basket_collision:
-                self.trajectory_ended = True
+            if joint1_vel > 180:
+                joint1_vel -= 360
+            if joint1_vel < -180:
+                joint1_vel += 360
+            if joint2_vel > 180:
+                joint2_vel -= 360
+            if joint2_vel < -180:
+                joint2_vel += 360
 
-        if self.trajectory_started and not self.trajectory_ended:
-            self.trajectory.append((self._ball.position.x, self._ball.position.y))
+            self._joint1_vel = joint1_vel / self.timestep
+            self._joint2_vel = joint2_vel / self.timestep
+
+            ball_dx = x1 - x0
+            ball_dy = y1 - y0
+            self._ball_vel_x = ball_dx / self.timestep
+            self._ball_vel_y = ball_dy / self.timestep
+            self._ball_vel = math.dist((x0, y0), (x1, y1)) / self.timestep
+            self._ball_ang = math.degrees(math.atan2(ball_dy, ball_dx))
 
         if self.render_mode == "human" or self.render_mode == "png":
             self._render_frame()
@@ -337,7 +357,7 @@ class BasketballShooterEnv(gym.Env):
 
         reward = 1 if info['distance'] < 0.01 else 0
 
-        [ball_x, ball_y] = info['ball']
+        [ball_x, ball_y] = info['ball_position']
         (width, height) = self._options['simulation']['world_size']
 
         terminated = bool(
@@ -380,6 +400,9 @@ class BasketballShooterEnv(gym.Env):
         canvas = pygame.Surface((round(width * ppm), round(height * ppm)))
         canvas.fill((0, 0, 0))
 
+        for callback in self._pre_render_callbacks:
+            callback._pre_render(canvas, ppm)
+
         self._paint_body(canvas, self._upper_arm, "blue", ppm)
         self._paint_body(canvas, self._lower_arm, "blue", ppm)
         self._paint_circle(canvas, self._upper_arm.position, 0.2, "dark blue", ppm)
@@ -387,11 +410,8 @@ class BasketballShooterEnv(gym.Env):
         self._paint_body(canvas, self._basket, "dark green", ppm)
         self._paint_body(canvas, self._ball, "dark red", ppm)
 
-        p0 = None
-        for p1 in self.trajectory:
-            if p0 is not None:
-                self._paint_segment(canvas, p0, p1, "yellow", ppm)
-            p0 = p1
+        for callback in self._post_render_callbacks:
+            callback._post_render(canvas, ppm)
 
         if self.render_mode == "human":
             self.window.blit(canvas, canvas.get_rect())
