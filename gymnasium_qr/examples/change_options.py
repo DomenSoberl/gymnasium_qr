@@ -34,6 +34,7 @@ custom_options = {
     },
     'ball': {
         'radius': 0.1,               # The size of the ball (radius) in meters.
+        'weight': 0.1,               # The weight of the ball in kilograms.
         'position': (-0.2, 0.2),     # Initial ball position in meters.
         'position_relative': True,   # Position is relative to the tip od the arm.
         'random_position_offset': {  # Random initial offsets [min, max] in meters.

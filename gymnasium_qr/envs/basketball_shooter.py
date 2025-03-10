@@ -44,6 +44,7 @@ class BasketballShooterEnv(gym.Env):
             },
             'ball': {
                 'radius': 0.1,
+                'weight': 0.1,
                 'position': (1.5, 2),
                 'position_relative': False,
                 'random_position_offset': {
@@ -81,6 +82,7 @@ class BasketballShooterEnv(gym.Env):
 
         assert render_mode is None or render_mode in self.metadata['render_modes']
         self.render_mode = render_mode
+        self.timestep = 1.0/self.metadata['render_fps']
 
         if render_mode == 'png':
             self._frame_number = 0
@@ -122,7 +124,7 @@ class BasketballShooterEnv(gym.Env):
                 (arm_length, arm_width),
                 (0, arm_width)
             ],
-            density=1, friction=0.1
+            density=50, friction=0.1
         )
 
         # Lower arm
@@ -141,7 +143,7 @@ class BasketballShooterEnv(gym.Env):
                 (arm_length, arm_width),
                 (0, arm_width)
             ],
-            density=1, friction=0.1
+            density=50, friction=0.1
         )
 
         # Joint between the mount and the upper arm
@@ -195,6 +197,8 @@ class BasketballShooterEnv(gym.Env):
         [offset_x_min, offset_x_max] = options['ball']['random_position_offset']['x']
         [offset_y_min, offset_y_max] = options['ball']['random_position_offset']['y']
 
+        ball_density = (options['ball']['weight']/(math.pi * options['ball']['radius']**2))
+
         ball = world.CreateDynamicBody(
             position=(
                 position_x + np.random.uniform(offset_x_min, offset_x_max),
@@ -203,7 +207,8 @@ class BasketballShooterEnv(gym.Env):
         )
         ball.CreateCircleFixture(
             radius=options['ball']['radius'],
-            density=0.01, friction=0.1
+            density=ball_density,
+            friction=0.1
         )
 
         self._world = world
@@ -272,7 +277,7 @@ class BasketballShooterEnv(gym.Env):
 
         for _ in range(skip_steps):
             self._world.Step(
-                timeStep=1.0/self.metadata['render_fps'],
+                timeStep=self.timestep,
                 velocityIterations=4, positionIterations=4
             )
 
@@ -300,7 +305,7 @@ class BasketballShooterEnv(gym.Env):
         self._joint2.motorSpeed = float(action[1] * 10)
 
         self._world.Step(
-            timeStep=1.0/self.metadata['render_fps'],
+            timeStep=self.timestep,
             velocityIterations=4, positionIterations=4
         )
 

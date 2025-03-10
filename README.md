@@ -24,7 +24,7 @@ The episode length is 300 steps by default. An episode is terminated when the ba
 
 ### Actions and observations
 
-Actions control the speeds of the two joints (upper and lower). A positive value denotes CCW rotation, a negative value CW rotation.
+Actions control the speeds of the two joints (upper and lower). A positive value denotes CCW rotation, a negative value CW rotation. The speed can be set within the interval [-10 deg/s, 10 deg/s], which is translated to the interval [-1.0, 1,0] for the input velocity variables.
 
 Observations are the following:
 
