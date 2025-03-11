@@ -44,7 +44,7 @@ class BasketballShooterEnv(gym.Env):
             },
             'ball': {
                 'radius': 0.1,
-                'weight': 0.1,
+                'weight': 0.5,
                 'position': (1.5, 2),
                 'position_relative': False,
                 'random_position_offset': {
@@ -127,7 +127,7 @@ class BasketballShooterEnv(gym.Env):
                 (arm_length, arm_width),
                 (0, arm_width)
             ],
-            density=50, friction=0.1
+            density=50, friction=1
         )
 
         # Lower arm
@@ -146,7 +146,7 @@ class BasketballShooterEnv(gym.Env):
                 (arm_length, arm_width),
                 (0, arm_width)
             ],
-            density=50, friction=0.1
+            density=50, friction=1
         )
 
         # Joint between the mount and the upper arm
@@ -157,7 +157,7 @@ class BasketballShooterEnv(gym.Env):
             localAnchorB=(0, 0),
             enableMotor=True,
             motorSpeed=0,
-            maxMotorTorque=10000
+            maxMotorTorque=100
         )
 
         # Joint between the upper and the lower arm
@@ -168,7 +168,7 @@ class BasketballShooterEnv(gym.Env):
             localAnchorB=(0, 0),
             enableMotor=True,
             motorSpeed=0,
-            maxMotorTorque=10000
+            maxMotorTorque=100
         )
 
         # Basket
@@ -211,7 +211,7 @@ class BasketballShooterEnv(gym.Env):
         ball.CreateCircleFixture(
             radius=options['ball']['radius'],
             density=ball_density,
-            friction=0.1
+            friction=1
         )
 
         self._world = world
@@ -314,7 +314,7 @@ class BasketballShooterEnv(gym.Env):
 
         self._world.Step(
             timeStep=self.timestep,
-            velocityIterations=4, positionIterations=4
+            velocityIterations=20, positionIterations=20
         )
 
         self.episode_step += 1

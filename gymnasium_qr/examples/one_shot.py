@@ -8,8 +8,8 @@ env = OneShot(env)
 
 observation, info = env.reset(
     options={
-        'action': [0.31, 0.57],
-        'duration': 0.16
+        'action': [0.45, 0.61],
+        'duration': 0.13
     }
 )
 

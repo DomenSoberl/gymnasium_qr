@@ -65,15 +65,27 @@ class OneShot(gym.Wrapper):
         (x, y) = env._lower_arm.fixtures[0].shape.vertices[0]
         r = env._ball.fixtures[0].shape.radius
 
-        self._grip = env._lower_arm.CreatePolygonFixture(
+        grip1 = env._lower_arm.CreatePolygonFixture(
             vertices=[
                 (x, y),
                 (x + 0.02, y),
-                (x + 0.02, y + 3*r/2),
-                (x, y + 3*r/2)
+                (x + 0.02, y + 2*r + 0.02),
+                (x, y + 2*r + 0.02)
             ],
-            density=1, friction=0.1
+            density=1, friction=1
         )
+
+        grip2 = env._lower_arm.CreatePolygonFixture(
+            vertices=[
+                (x + 0.02, y + 2*r + 0.02),
+                (x + 0.02, y + 2*r + 0.04),
+                (x + 0.02 - r, y + 2*r + 0.04),
+                (x + 0.02 - r, y + 2*r + 0.02)
+            ],
+            density=1, friction=1
+        )
+
+        self._grip = (grip1, grip2)
 
         env.render_mode = render_mode
         if env.render_mode == "human":
@@ -86,7 +98,9 @@ class OneShot(gym.Wrapper):
     def _release_grip(self):
         if self._grip is not None:
             env = self.env.unwrapped
-            env._lower_arm.DestroyFixture(self._grip)
+            (grip1, grip2) = self._grip
+            env._lower_arm.DestroyFixture(grip1)
+            env._lower_arm.DestroyFixture(grip2)
             self._grip = None
 
     def _store_release_data(self):
