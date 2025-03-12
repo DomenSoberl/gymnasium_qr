@@ -23,10 +23,10 @@ for episode in range(10):
 
     print(f'There are {len(points_up)} points at height 1 m moving up.')
     for p in points_up:
-        print(f'{p} with velocity {env.velocity_at(p)}.')
+        print(f'{p} with velocity {env.velocity_at(p)} at angle {env.angle_at(p)}.')
 
     print(f'There are {len(points_down)} points at height 1 m moving down.')
     for p in points_down:
-        print(f'{p} with velocity {env.velocity_at(p)}.')
+        print(f'{p} with velocity {env.velocity_at(p)} at angle {env.angle_at(p)}.')
 
 env.close()

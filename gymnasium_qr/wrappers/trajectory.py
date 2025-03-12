@@ -76,6 +76,24 @@ class Trajectory(gym.Wrapper):
 
         return np.array([np.nan, np.nan])
 
+    def angle_at(self, point: np.ndarray) -> float:
+        if point is None or len(self._trajectory) < 2:
+            return None
+
+        [x, y] = point
+
+        for i in range(len(self._trajectory) - 1):
+            (p0, _) = self._trajectory[i]
+            (p1, dt) = self._trajectory[i+1]
+
+            [x0, y0] = p0
+            [x1, y1] = p1
+
+            if x0 == x and y0 == y:
+                return math.degrees(math.atan2(y1 - y0, x1 - x0))
+
+        return None
+
     def reset(self, seed: Optional[int] = None, options: Optional[dict] = None):
         env = self.env.unwrapped
 
