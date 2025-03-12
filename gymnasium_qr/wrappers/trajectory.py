@@ -14,6 +14,8 @@ class Trajectory(gym.Wrapper):
         if type(env.unwrapped) is not BasketballShooterEnv:
             raise AttributeError(f'The wrapped environment must be an instance of the BasketballShooterEnv class.')
 
+        env.unwrapped._pre_render_callbacks.append(self)
+
     def trajectory_length(self) -> int:
         return len(self._trajectory)
 
@@ -76,7 +78,6 @@ class Trajectory(gym.Wrapper):
 
     def reset(self, seed: Optional[int] = None, options: Optional[dict] = None):
         env = self.env.unwrapped
-        env._pre_render_callbacks.append(self)
 
         self._trajectory_started = False
         self._trajectory_ended = False

@@ -231,8 +231,8 @@ class BasketballShooterEnv(gym.Env):
         return np.array([joint1_angle, joint2_angle, ball_x, ball_y], dtype=np.float32)
 
     def _get_info(self):
-        joint1_angle = math.degrees(self._upper_arm.angle) % 360 - 180
-        joint2_angle = joint1_angle + math.degrees(self._lower_arm.angle) % 360 - 180
+        joint1_angle = math.degrees(self._upper_arm.angle) % 360 - 270
+        joint2_angle = joint1_angle + math.degrees(self._lower_arm.angle) % 360 - 270
 
         ball_x = self._ball.position.x
         ball_y = self._ball.position.y
@@ -282,7 +282,7 @@ class BasketballShooterEnv(gym.Env):
         for _ in range(skip_steps):
             self._world.Step(
                 timeStep=self.timestep,
-                velocityIterations=4, positionIterations=4
+                velocityIterations=20, positionIterations=20
             )
 
         self.episode_step = 0

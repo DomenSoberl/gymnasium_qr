@@ -62,30 +62,11 @@ class OneShot(gym.Wrapper):
         observation, info = super().reset(seed=seed, options=self._options)
         info = self._append_info(info)
 
-        (x, y) = env._lower_arm.fixtures[0].shape.vertices[0]
-        r = env._ball.fixtures[0].shape.radius
-
-        grip1 = env._lower_arm.CreatePolygonFixture(
-            vertices=[
-                (x, y),
-                (x + 0.02, y),
-                (x + 0.02, y + 2*r + 0.02),
-                (x, y + 2*r + 0.02)
-            ],
-            density=1, friction=1
+        self._grip = env._world.CreateWeldJoint(
+            bodyA=env._lower_arm,
+            bodyB=env._ball,
+            anchor=env._lower_arm.worldCenter
         )
-
-        grip2 = env._lower_arm.CreatePolygonFixture(
-            vertices=[
-                (x + 0.02, y + 2*r + 0.02),
-                (x + 0.02, y + 2*r + 0.04),
-                (x + 0.02 - r, y + 2*r + 0.04),
-                (x + 0.02 - r, y + 2*r + 0.02)
-            ],
-            density=1, friction=1
-        )
-
-        self._grip = (grip1, grip2)
 
         env.render_mode = render_mode
         if env.render_mode == "human":
@@ -98,9 +79,7 @@ class OneShot(gym.Wrapper):
     def _release_grip(self):
         if self._grip is not None:
             env = self.env.unwrapped
-            (grip1, grip2) = self._grip
-            env._lower_arm.DestroyFixture(grip1)
-            env._lower_arm.DestroyFixture(grip2)
+            env._world.DestroyJoint(self._grip)
             self._grip = None
 
     def _store_release_data(self):
@@ -129,7 +108,7 @@ class OneShot(gym.Wrapper):
             step1 = tr - t0
             step2 = t1 - tr
 
-            if step1 > 0:
+            if step1 > 0.001:
                 env.timestep = step1
                 observation, reward, terminated, truncated, info = super().step(self._action)
                 info = self._append_info(info)
@@ -137,7 +116,7 @@ class OneShot(gym.Wrapper):
             self._release_grip()
             self._store_release_data()
 
-            if step2 > 0:
+            if step2 > 0.001:
                 env.timestep = step2
                 observation, reward, terminated, truncated, info = super().step([0, 0])
                 info = self._append_info(info)
@@ -155,6 +134,7 @@ class OneShot(gym.Wrapper):
             info = self._append_info(info)
 
         else:  # tr < t0
+            self._release_grip()
             observation, reward, terminated, truncated, info = super().step(np.array([0, 0]))
             info = self._append_info(info)
 
