@@ -19,6 +19,15 @@ class Trajectory(gym.Wrapper):
     def trajectory_length(self) -> int:
         return len(self._trajectory)
 
+    def trajectory_time_interval(self) -> (float, float):
+        if len(self._trajectory) < 2:
+            return None
+
+        (_, t0) = self._trajectory[0]
+        (_, t1) = self._trajectory[-1]
+
+        return (t0, t1)
+
     def highest_point(self) -> np.ndarray:
         if len(self._trajectory) == 0:
             return None
@@ -36,6 +45,22 @@ class Trajectory(gym.Wrapper):
                 max_p = p
 
         return max_p
+
+    def point_at_time(self, t: int) -> np.ndarray:
+        if len(self._trajectory) < 2:
+            return None
+
+        for i in range(len(self._trajectory) - 1):
+            (p0, t0) = self._trajectory[i]
+            (p1, t1) = self._trajectory[i+1]
+
+            if t0 <= t and t <= t1:
+                if (t - t0) < (t1 - t):
+                    return p0
+                else:
+                    return p1
+
+        return None
 
     def points_at_height(self, y: float) -> (list[np.ndarray], list[np.ndarray]):
         if len(self._trajectory) < 2:
@@ -65,13 +90,14 @@ class Trajectory(gym.Wrapper):
         [x, y] = point
 
         for i in range(len(self._trajectory) - 1):
-            (p0, _) = self._trajectory[i]
-            (p1, dt) = self._trajectory[i+1]
+            (p0, t0) = self._trajectory[i]
+            (p1, t1) = self._trajectory[i+1]
+            dt = t1 - t0
 
             [x0, y0] = p0
             [x1, y1] = p1
 
-            if x0 == x and y0 == y:
+            if x1 == x and y1 == y:
                 return np.array([(x1 - x0)/dt, (y1 - y0)/dt])
 
         return np.array([np.nan, np.nan])
@@ -84,7 +110,7 @@ class Trajectory(gym.Wrapper):
 
         for i in range(len(self._trajectory) - 1):
             (p0, _) = self._trajectory[i]
-            (p1, dt) = self._trajectory[i+1]
+            (p1, _) = self._trajectory[i+1]
 
             [x0, y0] = p0
             [x1, y1] = p1
@@ -100,6 +126,7 @@ class Trajectory(gym.Wrapper):
         self._trajectory_started = False
         self._trajectory_ended = False
         self._trajectory = []
+        self._time = 0
 
         render_mode = env.render_mode
         env.render_mode = None
@@ -117,11 +144,13 @@ class Trajectory(gym.Wrapper):
 
         observation, reward, terminated, truncated, info = super().step(action)
 
+        self._time += env.timestep
+
         if not self._trajectory_started and env._ball_vel_y > 0:
             self._trajectory_started = True
 
         if self._trajectory_started and not self._trajectory_ended:
-            self._trajectory.append((info["ball_position"], env.timestep))
+            self._trajectory.append((info["ball_position"], self._time))
 
         if not self._trajectory_ended and info["basket_touched"]:
             self._trajectory_ended = True

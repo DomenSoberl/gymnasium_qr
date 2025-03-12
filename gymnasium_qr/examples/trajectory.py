@@ -15,6 +15,14 @@ for episode in range(10):
         observation, reward, terminated, truncated, info = env.step(action)
         episode_over = terminated or truncated
 
+    interval = env.trajectory_time_interval()
+    if interval is not None:
+        (t0, t1) = interval
+        print(f'Trajectory was recorded between {t0} and {t1} seconds.')
+
+        vel = env.velocity_at(env.point_at_time(t1))
+        print(f'Final velocity was {vel}.')
+
     p = env.highest_point()
     vel = env.velocity_at(p)
     print(f'Highest point {p} with velocity {vel}.')
