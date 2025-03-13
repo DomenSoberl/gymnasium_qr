@@ -250,6 +250,7 @@ class BasketballShooterEnv(gym.Env):
 
         return {
             "step": self.episode_step,
+            "time": self.episode_time,
             "joint_angle": np.array([joint1_angle, joint2_angle], dtype=np.float32),
             "joint_velocity": np.array([self._joint1_vel, self._joint2_vel], dtype=np.float32),
             "ball_position": np.array([ball_x, ball_y], dtype=np.float32),
@@ -286,6 +287,7 @@ class BasketballShooterEnv(gym.Env):
             )
 
         self.episode_step = 0
+        self.episode_time = 0
         self.last_observation = None
 
         self._joint1_vel = 0
@@ -318,11 +320,9 @@ class BasketballShooterEnv(gym.Env):
         )
 
         self.episode_step += 1
+        self.episode_time += self.timestep
 
-        observation = self._get_obs()
-        info = self._get_info()
 
-        basket_collision = info['basket_touched']
 
         if self.last_observation is not None:
             [angle1_0, angle2_0, x0, y0] = self.last_observation
@@ -349,6 +349,9 @@ class BasketballShooterEnv(gym.Env):
             self._ball_vel_y = ball_dy / self.timestep
             self._ball_vel = math.dist((x0, y0), (x1, y1)) / self.timestep
             self._ball_ang = math.degrees(math.atan2(ball_dy, ball_dx))
+
+        observation = self._get_obs()
+        info = self._get_info()
 
         if self.render_mode == "human" or self.render_mode == "png":
             self._render_frame()
