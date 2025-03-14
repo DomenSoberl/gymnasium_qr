@@ -37,7 +37,25 @@ Observations are the following:
 
 ### Reward
 
-Reward is 0 if the basket has not been, 1 otherwise. Reward of 1 can only be obtained in the final step of the episode.
+Reward is 0 if the basket has not been hit, 1 otherwise. Reward of 1 can only be obtained in the final step of the episode.
+
+### Info
+
+The info structure contains the following data:
+
+| key               | Meaning                                            |
+|-------------------|----------------------------------------------------|
+| `step`            | Episode step (integer)                             |
+| `time`            | Episode time in seconds (float)                    |
+| `joint_angle`     | Angles of both joints in degrees (array)           |
+| `joint_velocity`  | Velocities of both joints in deg/s (array)         |
+| `ball_position`   | Position of the ball in meters (array)             | 
+| `ball_velocity`   | Velocity of the ball (float)                       |
+| `ball_angle`      | Angle of ball's motion (-90 degrees means falling) |
+| `basket_position` | The position of the basket in meters (array)       |
+| `distance`        | The distance of the ball from the basket (float)   |
+| `basket_touched`  | True if the ball touches the basket (collision)    |
+| `basket_hit`      | True if the basket is hit (reward = 1)             |
 
 ## Usage
 
@@ -87,22 +105,18 @@ observations, info = env.reset(options=custom_options)
 
 ### Trajectory
 
-Draws a trajectory from the moment the ball starts movinf upwards, and until it either touches the basket or the episodes terminates. After the episode finishes, the following methods are available to observe the property of the made trajectory:
+Records and draws the trajectory made by the ball. All steps of the episode are recorded. The `info` structure is augmented with the `"trajectory"` key that provides the list of `info` data structures for each consecutive simulation step.
 
-The length of the trajectory in steps.  
-`trajectory_length() -> int`
+The `Trajectory` class provides three static methods:
 
+`point_at_time(trajectory: list, t: float) -> dict`  
+Returns the `info` structure at the time closest to the given `t` (in seconds).
 
-The highest point (max y) of the trajectory. If no trajectory has been made, `None` is returned.  
-`highest_point(self) -> np.ndarray`
+`highest_point(trajectory: list) -> dict`  
+Returns the `info` structure of the highest point reached by the ball.
 
-
-The list of all the points at (or close to) the height y. The first returned list contains the points crossing the horizontal line y in upward motion, the second list in the downward motion.  
-`points_at_height(self, y: float) -> (list[np.ndarray], list[np.ndarray])`
-
-The velocity vector at the given point on the trajectory. If the given point is not found on the trajectory, [nan, nan] is returned.  
-`velocity_at(self, point: np.ndarray) -> np.ndarray`
-
+`points_at_height(trajectory: list, y: float) -> (list[dict], list[dict])`  
+Returns all the `info` structures of simulation steps that crossed the given height `y`. The first returned list contains the points that crossed ´y´ moving up, and the second list those moving down.
 
 ### One shoot
 
@@ -129,7 +143,7 @@ while not episode_over:
 
 ### No basket
 
-This wrapper removes the basket from the experimental setup. The coordinates are still there and the distance of the ball from the basket is still returned by the 'info' method, but it's physical manifestation is removed from the world.
+This wrapper removes the basket from the experimental setup. The coordinates are still there and the distance of the ball from the basket is still returned by the `info` method, but it's physical manifestation is removed from the world.
 
 Usage:
 
