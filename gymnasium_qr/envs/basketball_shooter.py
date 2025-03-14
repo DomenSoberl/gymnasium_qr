@@ -157,7 +157,7 @@ class BasketballShooterEnv(gym.Env):
             localAnchorB=(0, 0),
             enableMotor=True,
             motorSpeed=0,
-            maxMotorTorque=100
+            maxMotorTorque=10000
         )
 
         # Joint between the upper and the lower arm
@@ -168,7 +168,7 @@ class BasketballShooterEnv(gym.Env):
             localAnchorB=(0, 0),
             enableMotor=True,
             motorSpeed=0,
-            maxMotorTorque=100
+            maxMotorTorque=10000
         )
 
         # Basket
@@ -224,15 +224,15 @@ class BasketballShooterEnv(gym.Env):
 
     def _get_obs(self):
         joint1_angle = math.degrees(self._upper_arm.angle)
-        joint2_angle = math.degrees(self._lower_arm.angle) - joint1_angle
+        joint2_angle = math.degrees(self._lower_arm.angle - self._upper_arm.angle)
         ball_x = self._ball.position.x
         ball_y = self._ball.position.y
 
         return np.array([joint1_angle, joint2_angle, ball_x, ball_y], dtype=np.float32)
 
     def _get_info(self):
-        joint1_angle = math.degrees(self._upper_arm.angle) % 360 - 270
-        joint2_angle = joint1_angle + math.degrees(self._lower_arm.angle) % 360 - 270
+        joint1_angle = math.degrees(self._upper_arm.angle)
+        joint2_angle = math.degrees(self._lower_arm.angle - self._upper_arm.angle)
 
         ball_x = self._ball.position.x
         ball_y = self._ball.position.y
@@ -321,8 +321,6 @@ class BasketballShooterEnv(gym.Env):
 
         self.episode_step += 1
         self.episode_time += self.timestep
-
-
 
         if self.last_observation is not None:
             [angle1_0, angle2_0, x0, y0] = self.last_observation
