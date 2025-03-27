@@ -1,4 +1,5 @@
 from typing import Optional
+import math
 import numpy as np
 
 import gymnasium as gym
@@ -56,6 +57,16 @@ class Trajectory(gym.Wrapper):
                 points_down.append(trajectory[i])
 
         return (points_up, points_down)
+
+    def distance_to_point(trajectory: list, p: tuple[float, float]) -> float:
+        min_dist = None
+        for info in trajectory:
+            [x, y] = info['ball_position']
+            dist = math.dist((x, y), p)
+            if min_dist is None or dist < min_dist:
+                min_dist = dist
+
+        return min_dist
 
     def __init__(self, env: gym.Env[ObsType, ActType]):
         super().__init__(env)

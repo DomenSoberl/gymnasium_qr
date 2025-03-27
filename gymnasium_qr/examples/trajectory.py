@@ -15,7 +15,15 @@ for episode in range(10):
         observation, reward, terminated, truncated, info = env.step(action)
         episode_over = terminated or truncated
 
-    highest = Trajectory.highest_point(info["trajectory"])
+    trajectory = info["trajectory"]
+
+    highest = Trajectory.highest_point(trajectory)
     print(f'Highest point was at {highest["ball_position"]} with velocity {highest["ball_velocity"]}.')
+
+    [basket_x, basket_y] = info['basket_position']
+    dist = Trajectory.distance_to_point(trajectory, (basket_x, basket_y))
+
+    if dist is not None:
+        print(f'The distance from the basket was {dist}.')
 
 env.close()
