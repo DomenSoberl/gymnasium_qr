@@ -259,7 +259,7 @@ class BasketballShooterEnv(gym.Env):
             "basket_position": np.array([basket_x, basket_y], dtype=np.float32),
             "distance": distance,
             "basket_touched": basket_collision,
-            "basket_hit": (distance < 0.01)
+            "basket_hit": (distance < self._goal_tolerance)
         }
 
     def reset(self, seed: Optional[int] = None, options: Optional[dict] = None):
@@ -277,6 +277,8 @@ class BasketballShooterEnv(gym.Env):
             self._world = None
 
         self._create_world()
+
+        self._goal_tolerance = (options['basket']['size'] - 1) * options['ball']['radius']
 
         skip_steps = options['simulation']['skip_initial_steps']
 
@@ -356,13 +358,13 @@ class BasketballShooterEnv(gym.Env):
 
         self.last_observation = observation
 
-        reward = 1 if info['distance'] < 0.01 else 0
+        reward = 1 if info['distance'] <= self._goal_tolerance else 0
 
         [ball_x, ball_y] = info['ball_position']
         (width, height) = self._options['simulation']['world_size']
 
         terminated = bool(
-            info['distance'] < 0.01 or ball_y < 0
+            info['distance'] <= self._goal_tolerance or ball_y < 0
         )
 
         truncated = bool(
